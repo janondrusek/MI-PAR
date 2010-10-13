@@ -35,30 +35,49 @@ vector<int> getNeighbours(bool * line, int num) {
     return neighbours;
 }
 
+int isAllVisited(int * visited, int num) {
+    for (int i = 0; i < num; i++) {
+        if (visited[i] == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 bool isBipartial(bool ** matrix, int num) {
-    int i;
-    int u;
-    int v;
-    int start;
+    printf("in bipartial\n");
+    int current;
+    int vertex;
     queue< int > q;
-    start = 0; // nodes labeled from 1
-    q.push(start);
     int partition[num];
     int visited[num];
-    partition[start] = 1; // 1 left, 2 right
-    visited[start] = 1; // set gray
 
-    while (!q.empty()) {
-        u = q.front();
-        q.pop();
-        vector<int> neighbours = getNeighbours(matrix[u], num);
-        for (i = 0; i < neighbours.size(); i++) {
-            v = neighbours[i];
-            if (partition[u] == partition[v]) return false;
-            if (visited[v] == 0) {
-                visited[v] = 1;
-                partition[v] = 3 - partition[u]; // alter 1 and 2
-                q.push(v);
+    for (int i = 0; i < num; ++i) {
+        partition[i] = 0;
+        visited[i] = 0;
+    }
+
+    int firstUnvisited = 0;
+    while (isAllVisited(visited, num) >= 0) {
+        firstUnvisited = isAllVisited(visited, num);
+        printf("1. while: %d\n", firstUnvisited);
+        q.push(firstUnvisited);
+
+        partition[firstUnvisited] = 1; // first not visited
+        visited[firstUnvisited] = 1; // first not visited
+        while (!q.empty()) {
+            current = q.front();
+            q.pop();
+            vector<int> neighbours = getNeighbours(matrix[current], num);
+
+            for (int i = 0; i < neighbours.size(); i++) {
+                vertex = neighbours[i];
+                if (partition[current] == partition[vertex]) return false;
+                if (visited[vertex] == 0) {
+                    visited[vertex] = 1;
+                    partition[vertex] = 3 - partition[current]; // alter 1 and 2
+                    q.push(vertex);
+                }
             }
         }
     }
@@ -145,29 +164,40 @@ int main(int argc, char** argv) {
     matrices.push(new GraphStructure(matrix, edgesCount));
 
     bool winnerSet = false;
+
     while (!matrices.empty()) {
+        printf("matrices: %d\n", matrices.size());
         GraphStructure * gs;
         gs = matrices.top();
         matrices.pop();
-        if (!isBipartial(gs->getMatrix(), num)) {
-            if (!winnerSet || gs->getEdgesCount() > winner->getEdgesCount() + 1) {
-                for (int i = 0; i < gs->getEdgesCount(); ++i) {
-                    matrices.push(new GraphStructure(
-                            removeEdge(gs->getMatrix(), i + 1, num), gs->getEdgesCount() - 1));
-                }
+
+        if (winnerSet) {
+            if (winner->getEdgesCount() >= gs->getEdgesCount() - 1) {
                 delete gs;
+                continue;
             }
+        }
+
+        if (!isBipartial(gs->getMatrix(), num)) {
+            for (int i = 0; i < gs->getEdgesCount(); ++i) {
+                matrices.push(new GraphStructure(
+                        removeEdge(gs->getMatrix(), i + 1, num), gs->getEdgesCount() - 1));
+            }
+            delete gs;
         } else {
             if (!winnerSet) {
                 winnerSet = true;
                 winner = gs;
-            } else if (winner->getEdgesCount() < gs->getEdgesCount()) {
+
+            } else {
                 winner = gs;
             }
-            printf("bipartial with edges: %d\n", gs->getEdgesCount());
-            delete gs;
+
+            printf("else: bipartial winner edges: %d\n", winner->getEdgesCount());
         }
     }
+    printMatrix(winner->getMatrix(), num);
+
     printf("all edges count: %d\n", edgesCount);
 
     return 0;
