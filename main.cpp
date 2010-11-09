@@ -6,6 +6,7 @@
  * Created on October 11, 2010, 10:33 PM
  */
 
+#include "mpi.h"
 #include <stdio.h>
 #include <cstdlib>
 #include <iostream>
@@ -13,6 +14,11 @@
 #include "MatrixParser.h"
 #include "GraphStructure.h"
 #include <queue>
+
+#define START 1
+#define WORKING 2
+#define WAITING 3
+#define FINISHED 4
 
 using namespace std;
 
@@ -45,6 +51,7 @@ int isAllVisited(int * visited, int num) {
 }
 
 bool isBipartial(bool ** matrix, int num) {
+    printf("in isBipartial\n");
     int current;
     int vertex;
     queue< int > q;
@@ -116,13 +123,12 @@ GraphStructure* findWinner(MatrixParser *mp) {
     bool winnerSet = false;
     GraphStructure *winner;
     stack <GraphStructure *> matrices;
-    matrices.push(new GraphStructure(mp->getMatrix(), mp->getEdgesCount()));
+    matrices.push(new GraphStructure(mp->getMatrix(), mp->getEdgesCount(), mp->getMatrixSize()));
 
     while (!matrices.empty()) {
         GraphStructure * gs;
         gs = matrices.top();
         matrices.pop();
-
         if (winnerSet) {
             if (winner->getEdgesCount() >= gs->getEdgesCount() - 1) {
                 delete gs;
@@ -134,7 +140,7 @@ GraphStructure* findWinner(MatrixParser *mp) {
             for (int i = 0; i < gs->getEdgesCount(); ++i) {
                 matrices.push(new GraphStructure(
                         removeEdge(gs->getMatrix(), i + 1, mp->getMatrixSize()),
-                        gs->getEdgesCount() - 1));
+                        gs->getEdgesCount() - 1, mp->getMatrixSize()));
             }
             delete gs;
         } else {
@@ -153,15 +159,74 @@ GraphStructure* findWinner(MatrixParser *mp) {
     return winner;
 }
 
-int main(int argc, char** argv) {
-    MatrixParser *mp = new MatrixParser(argc, argv);
-
-    GraphStructure *winner = findWinner(mp);
-    printf("Given Matrix had %d edges\n", mp->getEdgesCount());
-
+void finalize(GraphStructure *winner) {
     printf("\nSearch finished. Final result is:\n");
     printf("Bipartial submatrix found with %d edges:\n", winner->getEdgesCount());
-    printMatrix(winner->getMatrix(), mp->getMatrixSize());
+
+    printMatrix(winner->getMatrix(), winner->getMatrixSize());
+}
+
+void runBalancer(MatrixParser *mp, int processes) {
+    if (isBipartial(mp->getMatrix(), mp->getMatrixSize())) {
+        finalize(new GraphStructure(mp->getMatrix(), mp->getEdgesCount(),
+                mp->getMatrixSize()));
+    } else {
+        stack <GraphStructure *> matrices;
+        for (int i = 0; i < mp->getEdgesCount(); ++i) {
+            matrices.push(new GraphStructure(
+                    removeEdge(mp->getMatrix(), i + 1, mp->getMatrixSize()),
+                    mp->getEdgesCount() - 1, mp->getMatrixSize()));
+        }
+        int lastWorker = 1;
+        int* workerStatuses = new int[processes];
+        for (int i = 1; i < processes; ++i) {
+            workerStatuses[i] = START;
+            MPI_Send(matrices.top()->toMPIDataType(), 0, MPI_PACKED, i, 1, MPI_COMM_WORLD);
+            matrices.pop();
+        }
+
+
+
+    }
+}
+
+void runWorker(int myRank) {
+    printf("Starting worker: %d\n", myRank);
+    MPI_Status status;
+    int workerStatus = START;
+    stack <GraphStructure *> matrices;
+    char buffer[LENGTH];
+
+    MPI_Recv(buffer, LENGTH, MPI_PACKED, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+    matrices.push(new GraphStructure(buffer));
+
+    printf("worker %d received %d matrices\n", myRank, matrices.size());
+}
+
+int main(int argc, char** argv) {
+    int myRank;
+    int processes;
+
+    /* start up MPI */
+    MPI_Init(&argc, &argv);
+
+    /* find out process rank */
+    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+
+    /* find out number of processes */
+    MPI_Comm_size(MPI_COMM_WORLD, &processes);
+
+    cout << "my rank: " << myRank << "\n";
+
+    if (myRank != 0) {
+        runWorker(myRank);
+    } else {
+        MatrixParser *mp = new MatrixParser(argc, argv);
+        runBalancer(mp, processes);
+    }
+
+    /* shut down MPI */
+    MPI_Finalize();
 
     return 0;
 }

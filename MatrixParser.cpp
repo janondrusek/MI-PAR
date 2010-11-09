@@ -26,12 +26,10 @@ MatrixParser::MatrixParser(int count, char** arguments) {
     }
     _filename = arguments[1];
     MatrixParser();
+    readMatrix();
 }
 
 bool** MatrixParser::getMatrix() {
-    if (_matrix == NULL) {
-        readMatrix();
-    }
     return _matrix;
 }
 
