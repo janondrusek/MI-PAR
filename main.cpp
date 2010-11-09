@@ -112,12 +112,10 @@ bool **removeEdge(bool**original, int edgePosition, int num) {
     cout << "!!! You never should've got here !!!";
 }
 
-int main(int argc, char** argv) {
-    MatrixParser *mp = new MatrixParser(argc, argv);
-    stack <GraphStructure *> matrices;
-    GraphStructure *winner;
+GraphStructure* findWinner(MatrixParser *mp) {
     bool winnerSet = false;
-
+    GraphStructure *winner;
+    stack <GraphStructure *> matrices;
     matrices.push(new GraphStructure(mp->getMatrix(), mp->getEdgesCount()));
 
     while (!matrices.empty()) {
@@ -135,7 +133,8 @@ int main(int argc, char** argv) {
         if (!isBipartial(gs->getMatrix(), mp->getMatrixSize())) {
             for (int i = 0; i < gs->getEdgesCount(); ++i) {
                 matrices.push(new GraphStructure(
-                        removeEdge(gs->getMatrix(), i + 1, mp->getMatrixSize()), gs->getEdgesCount() - 1));
+                        removeEdge(gs->getMatrix(), i + 1, mp->getMatrixSize()),
+                        gs->getEdgesCount() - 1));
             }
             delete gs;
         } else {
@@ -147,12 +146,22 @@ int main(int argc, char** argv) {
                 winner = gs;
             }
 
-            printf("else: bipartial winner edges: %d\n", winner->getEdgesCount());
+            printf("temporary best result: bipartial winner with edges count: %d\n",
+                    winner->getEdgesCount());
         }
     }
-    printMatrix(winner->getMatrix(), mp->getMatrixSize());
+    return winner;
+}
 
-    printf("all edges count: %d\n", mp->getEdgesCount());
+int main(int argc, char** argv) {
+    MatrixParser *mp = new MatrixParser(argc, argv);
+
+    GraphStructure *winner = findWinner(mp);
+    printf("Given Matrix had %d edges\n", mp->getEdgesCount());
+
+    printf("\nSearch finished. Final result is:\n");
+    printf("Bipartial submatrix found with %d edges:\n", winner->getEdgesCount());
+    printMatrix(winner->getMatrix(), mp->getMatrixSize());
 
     return 0;
 }
