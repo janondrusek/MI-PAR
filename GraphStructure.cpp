@@ -1,8 +1,7 @@
-#include <stdio.h>
 #include "GraphStructure.h"
 
 GraphStructure::GraphStructure() {
-};
+}
 
 GraphStructure::GraphStructure(bool **matrix, int edgesCount) {
     _matrix = matrix;

@@ -1,16 +1,16 @@
 /* 
  * File:   main.cpp
  * Author: magnusekm
+ * Author: ondruja1
  *
  * Created on October 11, 2010, 10:33 PM
  */
+
 #include <stdio.h>
 #include <cstdlib>
-#include <fstream>
 #include <iostream>
-#include <string>
-#include <sstream>
 #include <stack>
+#include "MatrixParser.h"
 #include "GraphStructure.h"
 #include <queue>
 
@@ -45,7 +45,6 @@ int isAllVisited(int * visited, int num) {
 }
 
 bool isBipartial(bool ** matrix, int num) {
-    printf("in bipartial\n");
     int current;
     int vertex;
     queue< int > q;
@@ -60,7 +59,6 @@ bool isBipartial(bool ** matrix, int num) {
     int firstUnvisited = 0;
     while (isAllVisited(visited, num) >= 0) {
         firstUnvisited = isAllVisited(visited, num);
-        printf("1. while: %d\n", firstUnvisited);
         q.push(firstUnvisited);
 
         partition[firstUnvisited] = 1; // first not visited
@@ -82,10 +80,6 @@ bool isBipartial(bool ** matrix, int num) {
         }
     }
     return true;
-}
-
-bool isOne(char value) {
-    return value == '1';
 }
 
 bool ** getMatrixCopy(bool ** original, int num) {
@@ -115,58 +109,18 @@ bool **removeEdge(bool**original, int edgePosition, int num) {
             }
         }
     }
-    cout << "How the fuck did you get here ???";
+    cout << "!!! You never should've got here !!!";
 }
 
 int main(int argc, char** argv) {
-    string str;
-    ifstream inFile;
-
-    inFile.open("graf.out");
-    if (!inFile) {
-        cerr << "Unable to open file graf.out";
-        exit(1); // call system to stop
-    }
-    getline(inFile, str);
-    istringstream is(str);
-    int num;
-    is >> num;
-
-    // declaration
-    bool** matrix;
-    bool* temp;
-
-    matrix = (bool**) malloc(num * sizeof (bool*));
-    temp = (bool*) malloc(num * num * sizeof (bool));
-    for (int i = 0; i < num; i++) {
-        matrix[i] = temp + (i * num);
-    }
-
-
-    int edgesCount = 0;
-    int line = 0;
-    while (getline(inFile, str)) {
-        for (int pos = 0; pos < num; ++pos) {
-            char value = str.at(pos);
-            bool one = isOne(value);
-            matrix[line][pos] = one;
-
-            if ((pos > line) && one) {
-                ++edgesCount;
-            }
-        }
-        line++;
-    }
-    inFile.close();
-
+    MatrixParser *mp = new MatrixParser(argc, argv);
     stack <GraphStructure *> matrices;
     GraphStructure *winner;
-    matrices.push(new GraphStructure(matrix, edgesCount));
-
     bool winnerSet = false;
 
+    matrices.push(new GraphStructure(mp->getMatrix(), mp->getEdgesCount()));
+
     while (!matrices.empty()) {
-        printf("matrices: %d\n", matrices.size());
         GraphStructure * gs;
         gs = matrices.top();
         matrices.pop();
@@ -178,10 +132,10 @@ int main(int argc, char** argv) {
             }
         }
 
-        if (!isBipartial(gs->getMatrix(), num)) {
+        if (!isBipartial(gs->getMatrix(), mp->getMatrixSize())) {
             for (int i = 0; i < gs->getEdgesCount(); ++i) {
                 matrices.push(new GraphStructure(
-                        removeEdge(gs->getMatrix(), i + 1, num), gs->getEdgesCount() - 1));
+                        removeEdge(gs->getMatrix(), i + 1, mp->getMatrixSize()), gs->getEdgesCount() - 1));
             }
             delete gs;
         } else {
@@ -196,9 +150,9 @@ int main(int argc, char** argv) {
             printf("else: bipartial winner edges: %d\n", winner->getEdgesCount());
         }
     }
-    printMatrix(winner->getMatrix(), num);
+    printMatrix(winner->getMatrix(), mp->getMatrixSize());
 
-    printf("all edges count: %d\n", edgesCount);
+    printf("all edges count: %d\n", mp->getEdgesCount());
 
     return 0;
 }
