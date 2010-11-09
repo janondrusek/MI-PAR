@@ -15,8 +15,6 @@
 #include "GraphStructure.h"
 #include <queue>
 
-#define LENGTH 1000
-
 #define START 1
 #define WORKING 2
 #define WAITING 3
@@ -166,7 +164,7 @@ void finalize(GraphStructure *winner, int processes) {
     for (int i = 1; i < processes; ++i) {
         printf("Balancer sending finalizeMessage to worker %d\n", i);
         int message[LENGTH];
-        MPI_Send(finalizeMessage->toMPIDataType(message), LENGTH + 1, MPI_INT, i, 1, MPI_COMM_WORLD);
+        MPI_Send(finalizeMessage->toMPIDataType(message), LENGTH, MPI_INT, i, 1, MPI_COMM_WORLD);
     }
 
     printf("\nSearch finished. Final result is:\n");
@@ -216,7 +214,7 @@ void runBalancer(MatrixParser *mp, int processes) {
         while (isAnyWorkerWorking(workerStatuses, processes)) {
             GraphStructure * workerWinner;
             int buffer[LENGTH];
-            MPI_Recv(buffer, 1, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status);
+            MPI_Recv(buffer, LENGTH, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
             int workerRank = status.MPI_SOURCE;
             workerWinner = new GraphStructure(buffer);
 
@@ -226,11 +224,12 @@ void runBalancer(MatrixParser *mp, int processes) {
                 delete workerWinner;
             }
             workerStatuses[workerRank] = WAITING;
-            //            if (!matrices.empty()) {
-            //                MPI_Send(matrices.top()->toMPIDataType(), 0, MPI_PACKED, workerRank, 1, MPI_COMM_WORLD);
-            //                matrices.pop();
-            //                workerStatuses[workerRank] = WORKING;
-            //            }
+            if (!matrices.empty()) {
+                int message[LENGTH];
+                MPI_Send(matrices.top()->toMPIDataType(message), 0, MPI_PACKED, workerRank, 1, MPI_COMM_WORLD);
+                matrices.pop();
+                workerStatuses[workerRank] = WORKING;
+            }
         }
 
 
@@ -245,7 +244,7 @@ void runWorker(int myRank) {
     GraphStructure * winner;
 
     while (true) {
-        MPI_Recv(buffer, 1001, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        MPI_Recv(buffer, LENGTH, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
         GraphStructure * balancerMessage = new GraphStructure(buffer);
         if (balancerMessage->getEdgesCount() == -1) {
             printf("Worker %d received finalizeMessage\n", myRank);
