@@ -259,6 +259,7 @@ void runWorker(int myRank) {
             printf("Worker %d received finalizeMessage\n", myRank);
             return;
         } else {
+
             winner = findWinner(balancerMessage);
             int message[LENGTH];
             winner->toMPIDataType(message);

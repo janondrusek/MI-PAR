@@ -1,5 +1,6 @@
 #include "GraphStructure.h"
 #include "mpi.h"
+#include <cstdlib>
 #include <stdio.h>
 #include <iostream>
 
