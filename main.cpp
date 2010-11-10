@@ -122,7 +122,7 @@ bool **removeEdge(bool**original, int edgePosition, int num) {
             }
         }
     }
-    cout << "!!! You never should've got here !!!";
+    cout << "!!! You never should've got here !!!\n";
 }
 
 GraphStructure* findWinner(GraphStructure * matrix) {
