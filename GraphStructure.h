@@ -9,13 +9,15 @@ public:
     bool** getMatrix();
     int getEdgesCount();
     int getMatrixSize();
-    int * toMPIDataType(int *message);
+    void toMPIDataType(int *message);
 
     virtual ~GraphStructure();
 private:
     bool ** _matrix;
     int _edgesCount;
     int _matrixSize;
+
+    void allocateMatrix();
 };
 
 #endif	
