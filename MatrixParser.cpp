@@ -11,7 +11,7 @@ using namespace std;
 MatrixParser::MatrixParser(void) {
     _edgesCount = 0;
     _matrixSize = 0;
-};
+}
 
 MatrixParser::MatrixParser(int count, char** arguments) {
     if (count != 2) {
@@ -47,9 +47,9 @@ void MatrixParser::readMatrix() {
     is >> _matrixSize;
     allocateMatrix();
 
-    int line = 0;
+    unsigned int line = 0;
     while (getline(inFile, str)) {
-        for (int pos = 0; pos < _matrixSize; ++pos) {
+        for (unsigned int pos = 0; pos < _matrixSize; ++pos) {
             char value = str.at(pos);
             bool one = isOne(value);
             _matrix[line][pos] = one;
@@ -67,16 +67,16 @@ void MatrixParser::allocateMatrix() {
 
     _matrix = (bool**) malloc(_matrixSize * sizeof (bool*));
     temp = (bool*) malloc(_matrixSize * _matrixSize * sizeof (bool));
-    for (int i = 0; i < _matrixSize; i++) {
+    for (unsigned int i = 0; i < _matrixSize; i++) {
         _matrix[i] = temp + (i * _matrixSize);
     }
 }
 
-int MatrixParser::getMatrixSize() {
+unsigned int MatrixParser::getMatrixSize() {
     return _matrixSize;
 }
 
-int MatrixParser::getEdgesCount() {
+unsigned int MatrixParser::getEdgesCount() {
     return _edgesCount;
 }
 
@@ -85,5 +85,5 @@ bool MatrixParser::isOne(char value) {
 }
 
 MatrixParser::~MatrixParser() {
-};
+}
 

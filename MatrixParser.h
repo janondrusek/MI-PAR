@@ -7,13 +7,13 @@ public:
     MatrixParser(int count, char** arguments);
 
     bool** getMatrix();
-    int getMatrixSize();
-    int getEdgesCount();
+    unsigned int getMatrixSize();
+    unsigned int getEdgesCount();
     virtual ~MatrixParser();
 private:
     bool ** _matrix;
-    int _edgesCount;
-    int _matrixSize;
+    unsigned int _edgesCount;
+    unsigned int _matrixSize;
     char* _filename;
 
     void readMatrix();

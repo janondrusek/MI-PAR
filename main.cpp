@@ -57,14 +57,14 @@ int isAllVisited(int * visited, int num) {
     return -1;
 }
 
-bool isBipartial(bool ** matrix, int num) {
+bool isBipartial(bool ** matrix, unsigned int num) {
     int current;
     int vertex;
     queue< int > q;
-    int partition[num];
-    int visited[num];
+    int* partition = new int[num];
+    int* visited = new int[num];
 
-    for (int i = 0; i < num; ++i) {
+    for (unsigned int i = 0; i < num; ++i) {
         partition[i] = 0;
         visited[i] = 0;
     }
@@ -81,7 +81,7 @@ bool isBipartial(bool ** matrix, int num) {
             q.pop();
             vector<int> neighbours = getNeighbours(matrix[current], num);
 
-            for (int i = 0; i < neighbours.size(); i++) {
+            for (unsigned int i = 0; i < neighbours.size(); i++) {
                 vertex = neighbours[i];
                 if (partition[current] == partition[vertex]) return false;
                 if (visited[vertex] == 0) {
@@ -108,6 +108,7 @@ bool ** getMatrixCopy(bool ** original, int num) {
 }
 
 bool **removeEdge(bool**original, int edgePosition, int num) {
+    printf("removeIdge position %d num %d", edgePosition, num);
     bool ** matrix = getMatrixCopy(original, num);
     int edgesCount = 0;
     for (int i = 0; i < num; ++i) {
@@ -122,7 +123,8 @@ bool **removeEdge(bool**original, int edgePosition, int num) {
             }
         }
     }
-    cout << "!!! You never should've got here !!!\n";
+    cerr << "!!! You never should've got here !!!\n";
+    exit(1);
 }
 
 GraphStructure* findWinner(GraphStructure * matrix) {
@@ -163,8 +165,7 @@ GraphStructure* findWinner(GraphStructure * matrix) {
 }
 
 void finalize(GraphStructure *winner, int processes) {
-    bool ** matrix;
-    GraphStructure * finalizeMessage = new GraphStructure(matrix, -1, 0);
+    GraphStructure * finalizeMessage = new GraphStructure(winner->getMatrix(), -1, 0);
     for (int i = 1; i < processes; ++i) {
         printf("Balancer sending finalizeMessage to worker %d\n", i);
         int message[LENGTH];
@@ -197,7 +198,7 @@ void runBalancer(MatrixParser *mp, int processes) {
                 mp->getMatrixSize()), processes);
     } else {
         stack <GraphStructure *> matrices;
-        for (int i = 0; i < mp->getEdgesCount(); ++i) {
+        for (unsigned int i = 0; i < mp->getEdgesCount(); ++i) {
             matrices.push(new GraphStructure(
                     removeEdge(mp->getMatrix(), i + 1, mp->getMatrixSize()),
                     mp->getEdgesCount() - 1, mp->getMatrixSize()));
@@ -248,7 +249,6 @@ void runBalancer(MatrixParser *mp, int processes) {
 void runWorker(int myRank) {
     printf("Starting worker: %d\n", myRank);
     MPI_Status status;
-    int workerStatus = START;
     int message[LENGTH];
     GraphStructure * winner;
 
@@ -287,6 +287,9 @@ int main(int argc, char** argv) {
         runWorker(myRank);
     } else {
         MatrixParser *mp = new MatrixParser(argc, argv);
+
+        printMatrix(mp->getMatrix(), mp->getMatrixSize());
+        return 1;
         runBalancer(mp, processes);
     }
 
