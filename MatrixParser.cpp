@@ -25,7 +25,9 @@ MatrixParser::MatrixParser(int count, char** arguments) {
         cerr << "***********************\n";
     }
     _filename = arguments[1];
-    MatrixParser();
+    _edgesCount = 0;
+    _matrixSize = 0;
+
     readMatrix();
 }
 

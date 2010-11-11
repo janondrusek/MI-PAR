@@ -20,6 +20,11 @@
 #define WAITING 3
 #define FINISHED 4
 
+#define WORK 1
+#define WINNER_UPDATE 2
+#define WORK_REQUEST 3
+#define WORK_RESPONSE 3
+
 using namespace std;
 
 void printMatrix(bool** matrix, int num) {
@@ -108,7 +113,6 @@ bool ** getMatrixCopy(bool ** original, int num) {
 }
 
 bool **removeEdge(bool**original, int edgePosition, int num) {
-    printf("removeIdge position %d num %d", edgePosition, num);
     bool ** matrix = getMatrixCopy(original, num);
     int edgesCount = 0;
     for (int i = 0; i < num; ++i) {
@@ -129,11 +133,39 @@ bool **removeEdge(bool**original, int edgePosition, int num) {
 
 GraphStructure* findWinner(GraphStructure * matrix) {
     bool winnerSet = false;
+    MPI_Status status;
+    int flag;
     GraphStructure *winner;
     stack <GraphStructure *> matrices;
     matrices.push(matrix);
-
+    unsigned int iteration = 1;
     while (!matrices.empty()) {
+        if (iteration % 100 == 0) {
+            //send worker winner if I have winner
+            if (winnerSet) {
+                int message[LENGTH];
+                winner->toMPIDataType(message);
+                MPI_Send(message, LENGTH, MPI_INT, 0, WINNER_UPDATE, MPI_COMM_WORLD);
+            }
+
+
+            //receive winner from balancer
+            MPI_Iprobe(0, WINNER_UPDATE, MPI_COMM_WORLD, &flag, &status);
+            if (flag) {
+                int message[LENGTH];
+                /* receiving message by blocking receive */
+                MPI_Recv(message, LENGTH, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+                int tag = status.MPI_TAG;
+                if (tag == WINNER_UPDATE) {
+                    winner = new GraphStructure(message);
+                } else if (tag == WORK_REQUEST && matrices.size() > 20) {
+                    matrices.top()->toMPIDataType(message);
+                    MPI_Send(message, LENGTH, MPI_INT, 0, WORK_RESPONSE, MPI_COMM_WORLD);
+                    matrices.pop();
+                }
+            }
+            iteration = 1;
+        }
         GraphStructure * gs;
         gs = matrices.top();
         matrices.pop();
@@ -155,11 +187,12 @@ GraphStructure* findWinner(GraphStructure * matrix) {
             if (!winnerSet) {
                 winnerSet = true;
                 winner = gs;
-
+                printf("Found winner with edges: %d\n", winner->getEdgesCount());
             } else {
                 winner = gs;
             }
         }
+        iteration++;
     }
     return winner;
 }
@@ -170,13 +203,22 @@ void finalize(GraphStructure *winner, int processes) {
         printf("Balancer sending finalizeMessage to worker %d\n", i);
         int message[LENGTH];
         finalizeMessage->toMPIDataType(message);
-        MPI_Send(message, LENGTH, MPI_INT, i, 1, MPI_COMM_WORLD);
+        MPI_Send(message, LENGTH, MPI_INT, i, WORK, MPI_COMM_WORLD);
     }
 
     printf("\nSearch finished. Final result is:\n");
     printf("Bipartial submatrix found with %d edges:\n", winner->getEdgesCount());
 
     printMatrix(winner->getMatrix(), winner->getMatrixSize());
+}
+
+int getFirstWaitingWorker(int * workerStatuses, int processes) {
+    for (int i = 1; i < processes; ++i) {
+        if (workerStatuses[i] == WAITING) {
+            return i;
+        }
+    }
+    return 0;
 }
 
 bool isAnyWorkerWorking(int * workerStatuses, int processes) {
@@ -198,48 +240,88 @@ void runBalancer(MatrixParser *mp, int processes) {
                 mp->getMatrixSize()), processes);
     } else {
         stack <GraphStructure *> matrices;
+        printf("runBalancer fill matrix, edges: %d\n", mp->getEdgesCount());
         for (unsigned int i = 0; i < mp->getEdgesCount(); ++i) {
             matrices.push(new GraphStructure(
                     removeEdge(mp->getMatrix(), i + 1, mp->getMatrixSize()),
                     mp->getEdgesCount() - 1, mp->getMatrixSize()));
         }
-        int lastWorker = 1;
         int* workerStatuses = new int[processes];
         for (int i = 1; i < processes; ++i) {
             if (!matrices.empty()) {
                 int message[LENGTH];
                 matrices.top()->toMPIDataType(message);
-                MPI_Send(message, LENGTH, MPI_INT, i, 1, MPI_COMM_WORLD);
+                MPI_Send(message, LENGTH, MPI_INT, i, WORK, MPI_COMM_WORLD);
                 matrices.pop();
                 workerStatuses[i] = WORKING;
-                lastWorker = i;
             } else {
                 workerStatuses[i] = WAITING;
             }
         }
 
         while (isAnyWorkerWorking(workerStatuses, processes)) {
-            GraphStructure * workerWinner;
-            int buffer[LENGTH];
+            //            int firstWaiting = getFirstWaitingWorker(workerStatuses, processes);
+            //            if (firstWaiting > 0 && !matrices.empty()) {
+            //                int message[LENGTH];
+            //                matrices.top()->toMPIDataType(message);
+            //                MPI_Send(message, LENGTH, MPI_INT, firstWaiting, WORK, MPI_COMM_WORLD);
+            //                matrices.pop();
+            //                workerStatuses[firstWaiting] = WORKING;
+            //                continue;
+            //            }
 
-            MPI_Recv(buffer, LENGTH, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+            GraphStructure * matrix;
+            int message[LENGTH];
+            MPI_Recv(message, LENGTH, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
             int workerRank = status.MPI_SOURCE;
-            workerWinner = new GraphStructure(buffer);
-            if (!winnerSet || workerWinner->getEdgesCount() > winner->getEdgesCount()) {
-                winner = workerWinner;
+            int workerTag = status.MPI_TAG;
+            matrix = new GraphStructure(message);
+
+            // Prijem nedodelane prace od workera na zaklade pozadavku
+            if (workerTag == WORK_RESPONSE) {
+                int firstWaiting = getFirstWaitingWorker(workerStatuses, processes);
+                if (firstWaiting > 0) {
+                    matrix->toMPIDataType(message);
+                    MPI_Send(message, LENGTH, MPI_INT, firstWaiting, WORK, MPI_COMM_WORLD);
+                    workerStatuses[firstWaiting] = WORKING;
+                } else {
+                    matrices.push(matrix);
+                }
+                continue;
+            }
+            // Preskocime aktualizaci winnera a update winnera pro workery
+
+            if (!winnerSet || matrix->getEdgesCount() > winner->getEdgesCount()) {
+                winner = matrix;
+                printf("Temporary Bipartial with edges count: %d\n", winner->getEdgesCount());
                 winnerSet = true;
             } else {
-                delete workerWinner;
+                delete matrix;
             }
 
-            workerStatuses[workerRank] = WAITING;
-            if (!matrices.empty()) {
-                int message[LENGTH];
-                matrices.top()->toMPIDataType(message);
-                MPI_Send(message, LENGTH, MPI_INT, workerRank, 1, MPI_COMM_WORLD);
-                matrices.pop();
-                workerStatuses[workerRank] = WORKING;
+            // Worker zaslal vysledek, oznacime jako cekajiciho na praci
+            if (workerTag == FINISHED) {
+                workerStatuses[workerRank] = WAITING;
+                if (!matrices.empty()) {
+                    int message[LENGTH];
+                    matrices.top()->toMPIDataType(message);
+                    MPI_Send(message, LENGTH, MPI_INT, workerRank, WORK, MPI_COMM_WORLD);
+                    matrices.pop();
+                    workerStatuses[workerRank] = WORKING;
+                } else {
+                    // Vsem pracujicim Workrum zadost o cast zasobniku
+                    for (int i = 1; i < processes; ++i) {
+                        if (workerStatuses[i] == WORKING) {
+                            MPI_Send(message, LENGTH, MPI_INT, i, WORK_REQUEST, MPI_COMM_WORLD);
+                        }
+                    }
+                }
+
+            }
+            winner->toMPIDataType(message);
+            for (int i = 1; i < processes; ++i) {
+                MPI_Send(message, LENGTH, MPI_INT, i, WINNER_UPDATE, MPI_COMM_WORLD);
             }
         }
         finalize(winner, processes);
@@ -253,17 +335,16 @@ void runWorker(int myRank) {
     GraphStructure * winner;
 
     while (true) {
-        MPI_Recv(message, LENGTH, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        MPI_Recv(message, LENGTH, MPI_INT, 0, WORK, MPI_COMM_WORLD, &status);
         GraphStructure * balancerMessage = new GraphStructure(message);
         if (balancerMessage->getEdgesCount() == -1) {
             printf("Worker %d received finalizeMessage\n", myRank);
             return;
         } else {
-
             winner = findWinner(balancerMessage);
             int message[LENGTH];
             winner->toMPIDataType(message);
-            MPI_Send(message, LENGTH, MPI_INT, 0, 1, MPI_COMM_WORLD);
+            MPI_Send(message, LENGTH, MPI_INT, 0, FINISHED, MPI_COMM_WORLD);
         }
     }
 }
@@ -287,9 +368,7 @@ int main(int argc, char** argv) {
         runWorker(myRank);
     } else {
         MatrixParser *mp = new MatrixParser(argc, argv);
-
-        printMatrix(mp->getMatrix(), mp->getMatrixSize());
-        return 1;
+        printf("mp edges count: %d size: %d\n", mp->getEdgesCount(), mp->getMatrixSize());
         runBalancer(mp, processes);
     }
 
