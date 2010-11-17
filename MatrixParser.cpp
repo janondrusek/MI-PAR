@@ -1,10 +1,4 @@
 #include "MatrixParser.h"
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <stdio.h>
-#include <string>
 
 using namespace std;
 
@@ -18,11 +12,11 @@ MatrixParser::MatrixParser(int count, char** arguments) {
         cerr << "Usage: " << arguments[0] << " FILE_NAME\n";
         exit(1);
     } else {
-        cerr << "***********************\n";
+        cout << "***********************\n";
         for (int i = 0; i < count; ++i) {
             cout << i << ": " << arguments[i] << "\n";
         }
-        cerr << "***********************\n";
+        cout << "***********************\n";
     }
     _filename = arguments[1];
     _edgesCount = 0;
@@ -65,12 +59,12 @@ void MatrixParser::readMatrix() {
 }
 
 void MatrixParser::allocateMatrix() {
-    bool* temp;
-
-    _matrix = (bool**) malloc(_matrixSize * sizeof (bool*));
-    temp = (bool*) malloc(_matrixSize * _matrixSize * sizeof (bool));
-    for (unsigned int i = 0; i < _matrixSize; i++) {
-        _matrix[i] = temp + (i * _matrixSize);
+    _matrix = new bool*[_matrixSize];
+    for (int i = 0; i < _matrixSize; ++i) {
+        _matrix[i] = new bool[_matrixSize];
+        for (int j = 0; j < _matrixSize; ++j) {
+            _matrix[i][j] = _matrix[i][j];
+        }
     }
 }
 

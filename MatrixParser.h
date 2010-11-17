@@ -2,6 +2,12 @@
 #define	MATRIXPARSER_H
 
 #include "GraphStructure.h"
+#include <cstdlib>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <stdio.h>
+#include <string>
 
 class MatrixParser {
 public:
