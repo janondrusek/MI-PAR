@@ -1,11 +1,14 @@
 #ifndef MATRIXPARSER_H
 #define	MATRIXPARSER_H
 
+#include "GraphStructure.h"
+
 class MatrixParser {
 public:
     MatrixParser(void);
     MatrixParser(int count, char** arguments);
 
+    GraphStructure * getGraphStructure();
     bool** getMatrix();
     unsigned int getMatrixSize();
     unsigned int getEdgesCount();

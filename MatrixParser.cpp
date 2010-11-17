@@ -82,6 +82,11 @@ unsigned int MatrixParser::getEdgesCount() {
     return _edgesCount;
 }
 
+GraphStructure * MatrixParser::getGraphStructure() {
+    GraphStructure * gs = new GraphStructure(getMatrix(), getEdgesCount(), getMatrixSize());
+    return gs;
+}
+
 bool MatrixParser::isOne(char value) {
     return value == '1';
 }

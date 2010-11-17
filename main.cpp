@@ -230,21 +230,20 @@ bool isAnyWorkerWorking(int * workerStatuses, int processes) {
     return false;
 }
 
-void runBalancer(MatrixParser *mp, int processes) {
+void runBalancer(GraphStructure *gs, int processes) {
     bool winnerSet = false;
     GraphStructure * winner;
     MPI_Status status;
 
-    if (isBipartial(mp->getMatrix(), mp->getMatrixSize())) {
-        finalize(new GraphStructure(mp->getMatrix(), mp->getEdgesCount(),
-                mp->getMatrixSize()), processes);
+    if (isBipartial(gs->getMatrix(), gs->getMatrixSize())) {
+        finalize(gs, processes);
     } else {
         stack <GraphStructure *> matrices;
-        printf("runBalancer fill matrix, edges: %d\n", mp->getEdgesCount());
-        for (unsigned int i = 0; i < mp->getEdgesCount(); ++i) {
+        printf("runBalancer fill matrix, edges: %d\n", gs->getEdgesCount());
+        for (unsigned int i = 0; i < gs->getEdgesCount(); ++i) {
             matrices.push(new GraphStructure(
-                    removeEdge(mp->getMatrix(), i + 1, mp->getMatrixSize()),
-                    mp->getEdgesCount() - 1, mp->getMatrixSize()));
+                    removeEdge(gs->getMatrix(), i + 1, gs->getMatrixSize()),
+                    gs->getEdgesCount() - 1, gs->getMatrixSize()));
         }
         int* workerStatuses = new int[processes];
         for (int i = 1; i < processes; ++i) {
@@ -260,16 +259,6 @@ void runBalancer(MatrixParser *mp, int processes) {
         }
 
         while (isAnyWorkerWorking(workerStatuses, processes)) {
-            //            int firstWaiting = getFirstWaitingWorker(workerStatuses, processes);
-            //            if (firstWaiting > 0 && !matrices.empty()) {
-            //                int message[LENGTH];
-            //                matrices.top()->toMPIDataType(message);
-            //                MPI_Send(message, LENGTH, MPI_INT, firstWaiting, WORK, MPI_COMM_WORLD);
-            //                matrices.pop();
-            //                workerStatuses[firstWaiting] = WORKING;
-            //                continue;
-            //            }
-
             GraphStructure * matrix;
             int message[LENGTH];
             MPI_Recv(message, LENGTH, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
@@ -369,7 +358,7 @@ int main(int argc, char** argv) {
     } else {
         MatrixParser *mp = new MatrixParser(argc, argv);
         printf("mp edges count: %d size: %d\n", mp->getEdgesCount(), mp->getMatrixSize());
-        runBalancer(mp, processes);
+        runBalancer(mp->getGraphStructure(), processes);
     }
 
     /* shut down MPI */
