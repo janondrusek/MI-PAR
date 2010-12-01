@@ -21,12 +21,12 @@ GraphStructure::GraphStructure(bool **matrix, int edgesCount, int matrixSize) {
 }
 
 void GraphStructure::allocateMatrix() {
-    bool* temp;
-
-    _matrix = (bool**) malloc(_matrixSize * sizeof (bool*));
-    temp = (bool*) malloc(_matrixSize * _matrixSize * sizeof (bool));
-    for (int i = 0; i < _matrixSize; i++) {
-        _matrix[i] = temp + (i * _matrixSize);
+    _matrix = new bool*[_matrixSize];
+    for (unsigned int i = 0; i < _matrixSize; ++i) {
+        _matrix[i] = new bool[_matrixSize];
+        for (unsigned int j = 0; j < _matrixSize; ++j) {
+            _matrix[i][j] = _matrix[i][j];
+        }
     }
 }
 
@@ -140,9 +140,8 @@ bool ** GraphStructure::removeEdge(int edgePosition) {
 }
 
 GraphStructure::~GraphStructure() {
-    //    for (int i = 0; i < _matrixSize; i++) {
-    //        delete [] _matrix[i];
-    //    }
-    delete [] * _matrix;
+    for (int i = 0; i < _matrixSize; i++) {
+        delete [] _matrix[i];
+    }
     delete [] _matrix;
 }

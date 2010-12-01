@@ -64,7 +64,7 @@ void Node::findWinner() {
         gs = _matrices.top();
         _matrices.pop();
         if (_winnerEdgesCount >= gs->getEdgesCount() - 1) {
-            if (winnerSet) delete gs;
+            /*if (winnerSet) */ delete gs;
             continue;
         }
 
@@ -75,7 +75,7 @@ void Node::findWinner() {
             }
             delete gs;
         } else {
-            winnerSet = true;
+            //winnerSet = true;
             _winner = gs;
             _winnerEdgesCount = gs->getEdgesCount();
         }
