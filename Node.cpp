@@ -63,16 +63,19 @@ void Node::findWinner() {
 
         gs = _matrices.top();
         _matrices.pop();
-        if (_winnerEdgesCount >= gs->getEdgesCount() - 1) {
+        if (_winnerEdgesCount >= gs->getEdgesCount()) {
             delete gs;
             continue;
         }
 
         if (!gs->isBipartial()) {
-            for (int i = 0; i < gs->getEdgesCount(); ++i) {
-                _matrices.push(new GraphStructure(gs->removeEdge(i + 1),
-                        gs->getEdgesCount() - 1, gs->getMatrixSize()));
+            if (gs->getEdgesCount() > _winnerEdgesCount + 1) {
+                for (int i = 0; i < gs->getEdgesCount(); ++i) {
+                    _matrices.push(new GraphStructure(gs->removeEdge(i + 1),
+                            gs->getEdgesCount() - 1, gs->getMatrixSize()));
+                }
             }
+
             delete gs;
         } else {
 
