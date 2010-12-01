@@ -60,9 +60,9 @@ void MatrixParser::readMatrix() {
 
 void MatrixParser::allocateMatrix() {
     _matrix = new bool*[_matrixSize];
-    for (int i = 0; i < _matrixSize; ++i) {
+    for (unsigned int i = 0; i < _matrixSize; ++i) {
         _matrix[i] = new bool[_matrixSize];
-        for (int j = 0; j < _matrixSize; ++j) {
+        for (unsigned int j = 0; j < _matrixSize; ++j) {
             _matrix[i][j] = _matrix[i][j];
         }
     }

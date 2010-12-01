@@ -44,6 +44,10 @@ void Node::findWinner() {
                 MPI_Recv(message, LENGTH, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
                 int tag = status.MPI_TAG;
                 if (tag == WALKER_B || tag == WALKER_W) {
+                    if (tag == WALKER_W && _rank != 0) {
+                        _matrices.top()->toMPIDataType(message);
+                        _matrices.pop();
+                    }
                     MPI_Send(message, LENGTH, MPI_INT, (_rank + 1) % _processes, WALKER_B, MPI_COMM_WORLD);
                 } else if (tag == WORK_REQUEST && _matrices.size() > 20) {
                     _matrices.top()->toMPIDataType(message);
@@ -146,6 +150,7 @@ void Node::work() {
 
 Node::~Node() {
 }
+
 
 
 
