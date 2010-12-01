@@ -32,6 +32,7 @@ void Node::findWinner() {
     int flag;
     bool winnerSet = false;
     unsigned int iteration = 0;
+    int message[LENGTH];
 
     while (!_matrices.empty()) {
         iteration++;
@@ -39,7 +40,6 @@ void Node::findWinner() {
             //receive work request from another worker
             MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &flag, &status);
             if (flag) {
-                int message[LENGTH];
                 /* receiving message by blocking receive */
                 MPI_Recv(message, LENGTH, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
                 int tag = status.MPI_TAG;
@@ -64,7 +64,7 @@ void Node::findWinner() {
         gs = _matrices.top();
         _matrices.pop();
         if (_winnerEdgesCount >= gs->getEdgesCount() - 1) {
-            /*if (winnerSet) */ delete gs;
+            delete gs;
             continue;
         }
 
@@ -75,9 +75,17 @@ void Node::findWinner() {
             }
             delete gs;
         } else {
-            //winnerSet = true;
-            _winner = gs;
+
+            if (winnerSet) {
+                GraphStructure * old = _winner;
+                _winner = gs;
+                delete old;
+            } else {
+                _winner = gs;
+            }
+            winnerSet = true;
             _winnerEdgesCount = gs->getEdgesCount();
+            printf("worker %d temporary winner with edges: %d\n", _rank, _winnerEdgesCount);
         }
     }
 }
@@ -106,13 +114,18 @@ GraphStructure * Node::run() {
         if (tag == FINALIZE) {
             _winner->toMPIDataType(message);
             MPI_Send(message, LENGTH, MPI_INT, 0, FINALIZE_RESPONSE, MPI_COMM_WORLD);
+            delete response;
             break;
         } else if (tag == WORK_REQUEST) {
+            delete response;
+
             MPI_Send(message, LENGTH, MPI_INT, status.MPI_SOURCE, WORK_RESPONSE, MPI_COMM_WORLD);
         } else if (tag == WORK || tag == WORK_RESPONSE || (tag == WALKER_B && _rank == 0)) {
             appendResponse(response);
             work();
         } else if (tag == WORK_RESPONSE_EMPTY) {
+            delete response;
+
             MPI_Send(message, LENGTH, MPI_INT, getNextNode(), WORK_REQUEST, MPI_COMM_WORLD);
         } else if (tag == WALKER_B || tag == WALKER_W) {
             if (_rank == 0) {
@@ -120,9 +133,12 @@ GraphStructure * Node::run() {
                     appendResponse(response);
                     work();
                 } else {
+                    delete response;
                     break;
                 }
             } else {
+                delete response;
+
                 MPI_Send(message, LENGTH, MPI_INT, (_rank + 1) % _processes, tag, MPI_COMM_WORLD);
             }
         } else {
